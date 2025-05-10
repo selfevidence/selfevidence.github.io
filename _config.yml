@@ -6,6 +6,9 @@ url: "https://selfevidence.github.io" # your GitHub Pages URL
 # GitHub Pages will use these defaults
 theme: minima
 
+plugins:
+  - jekyll-feed
+  
 # Set this if you're using the docs folder
 source: docs
 
