@@ -2,3 +2,8 @@
 
 source "https://rubygems.org"
 gemspec
+
+gem 'base64'
+gem 'bigdecimal'
+gem 'logger'
+gem 'kramdown-parser-gfm'
