@@ -145,6 +145,7 @@ footer:
     #   # url:
     - label: "GitHub"
       icon: "fab fa-fw fa-github"
+<<<<<<< HEAD
       url: "https://github.com/selfevidence"
     # - label: "GitLab"
     #   icon: "fab fa-fw fa-gitlab"
@@ -155,6 +156,13 @@ footer:
     # - label: "Instagram"
     #   icon: "fab fa-fw fa-instagram"
     #   # url:
+=======
+      url: "https://github.com/mmistakes"
+    - label: "Instagram"
+      icon: "fab fa-fw fa-instagram"
+      url: "https://instagram.com/mmistakes"
+  since: "2013"
+>>>>>>> upstream/master
 
 
 # Reading Files
