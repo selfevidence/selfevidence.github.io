@@ -1,8 +1,11 @@
+import sys
 import requests
 import json
 import pandas as pd
 import time
-from secret_keys import bls_api_key
+from data.bureau_of_labor_statistics.secret_keys import bls_api_key
+
+sys.dont_write_bytecode = True # prevents the creation of a pycache folder for secrets
 
 headers = {'Content-type': 'application/json'}
 
