@@ -3,7 +3,7 @@ import requests
 import json
 import pandas as pd
 import time
-from data.bureau_of_labor_statistics.secret_keys import bls_api_key
+from secret_keys import bls_api_key
 
 sys.dont_write_bytecode = True # prevents the creation of a pycache folder for secrets
 
