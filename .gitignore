@@ -31,5 +31,8 @@ codekit-config.json
 _asset_bundler_cache
 _site
 
+# pycache
+**__pycache__/
+
 # secrets
 data/bureau_of_labor_statistics/secret_keys.py

@@ -5,11 +5,9 @@ import pandas as pd
 import time
 from secret_keys import bls_api_key
 
-sys.dont_write_bytecode = True # prevents the creation of a pycache folder for secrets
-
 headers = {'Content-type': 'application/json'}
 
-def get_bls_data(series_ids: list[str], years: list[int]):
+def get_bls_data(series_ids: list[str], years: list[int], print_output: bool = False):
     df = pd.DataFrame(columns=["series id", "year", "period", "value"])
     
     for y in range(0, len(years), 20):
@@ -24,13 +22,15 @@ def get_bls_data(series_ids: list[str], years: list[int]):
             )
             p = requests.post('https://api.bls.gov/publicAPI/v2/timeseries/data/', data=data, headers=headers)
             json_data = json.loads(p.text)
+            if print_output:
+                print(json_data)
             for series in json_data['Results']['series']:
                 seriesId = series['seriesID']
                 for item in series['data']:
                     year = item['year']
                     period = item['period']
                     value = item['value']
-                    if 'M01' <= period <= 'M12':
+                    if value:
                         df.loc[len(df)] = [seriesId, year, period, value]
             
             time.sleep(1)
