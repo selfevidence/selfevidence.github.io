@@ -36,3 +36,5 @@ _site
 
 # secrets
 data/bureau_of_labor_statistics/secret_keys.py
+data/secret_keys.py
+data/config/api_keys.py
