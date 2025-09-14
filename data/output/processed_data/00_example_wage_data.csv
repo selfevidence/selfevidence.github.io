@@ -1,4 +1,4 @@
-series id,year,period,value,data_type,description,percentile,race
+series_id,year,period,value,data_type,description,percentile,race
 LEU0252881500,1998,Q04,541.0,CPS Weekly Nominal Earnings,"(unadj)- Usual weekly earnings (second quartile), Employed full time, Wage and salary workers",50,All
 LEU0252881500,1998,Q03,520.0,CPS Weekly Nominal Earnings,"(unadj)- Usual weekly earnings (second quartile), Employed full time, Wage and salary workers",50,All
 LEU0252881500,1998,Q02,515.0,CPS Weekly Nominal Earnings,"(unadj)- Usual weekly earnings (second quartile), Employed full time, Wage and salary workers",50,All

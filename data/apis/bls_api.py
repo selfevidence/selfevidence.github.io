@@ -103,6 +103,16 @@ class BLSAPI(BaseGovernmentAPI):
         df['race'] = df['series_id'].apply(lambda x: series_id_dict[x]['race'])
         df['year'] = df['year'].astype(int)
         df['value'] = df['value'].astype(float)
+        
+        quarter_mapping = {
+            'Q01': '01-01',
+            'Q02': '04-01',
+            'Q03': '07-01',
+            'Q04': '10-01',
+        }
+        df['date'] = df['year'].astype(str) + '-' + df['period'].map(quarter_mapping)
+        df['date'] = pd.to_datetime(df['date'])
+
         return df
 
 # Test the function
