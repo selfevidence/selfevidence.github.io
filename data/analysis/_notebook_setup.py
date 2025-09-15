@@ -135,7 +135,7 @@ def save_plotly_figure(fig, filename, formats=['html'], subdir="figures", for_bl
                 'scrollZoom': False,  # Disable scroll wheel zoom
                 'doubleClick': 'reset',  # Double-click resets view instead of zoom
                 'showTips': False,  # Disable hover tooltips that can interfere on touch
-                'modeBarButtonsToRemove': ['pan2d', 'lasso2d']  # Keep zoom buttons, remove pan/select
+                'modeBarButtonsToRemove': ['pan2d', 'lasso2d', 'zoom2d']  # Remove pan, select, and box zoom
             }
             
             # Save interactive HTML
