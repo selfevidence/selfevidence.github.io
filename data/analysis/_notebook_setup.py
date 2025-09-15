@@ -127,16 +127,25 @@ def save_plotly_figure(fig, filename, formats=['html'], subdir="figures", for_bl
         file_path = save_dir / f"{filename}.{fmt}"
         
         if fmt == 'html':
+            # Responsive configuration for web embedding
+            responsive_config = {
+                'responsive': True,
+                'displayModeBar': True,
+                'displaylogo': False,
+                'modeBarButtonsToRemove': ['pan2d', 'lasso2d']
+            }
+            
             # Save interactive HTML
             fig.write_html(
                 file_path,
                 include_plotlyjs='cdn',  # Use CDN for smaller files
-                div_id=f"{filename}-chart"
+                div_id=f"{filename}-chart",
+                config=responsive_config
             )
             # Also save to blog assets if requested
             if for_blog:
                 blog_path = blog_dir / f"{filename}.html"
-                fig.write_html(blog_path, include_plotlyjs='cdn', div_id=f"{filename}-chart")
+                fig.write_html(blog_path, include_plotlyjs='cdn', div_id=f"{filename}-chart", config=responsive_config)
                 print(f"📝 Blog version saved: {blog_path}")
                 
         elif fmt == 'json':

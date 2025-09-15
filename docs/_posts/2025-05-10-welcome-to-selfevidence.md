@@ -1,7 +1,7 @@
 ---
 layout: single
 title: "Welcome to Self Evidence (with Plotly)"
-date: 2025-05-10
+date: 2025-09-14
 ---
 
 This is an interactive Plotly chart embedded in a Jekyll post.
@@ -18,3 +18,5 @@ This is an interactive Plotly chart embedded in a Jekyll post.
 
   Plotly.newPlot('plotly-chart', [trace]);
 </script>
+
+<iframe src="{{ site.baseurl }}/assets/charts/01_cpi_chart_1984.html" width="100%" height="700" frameborder="0"></iframe>
