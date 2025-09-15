@@ -74,7 +74,7 @@ def save_figure(fig, filename, formats=['png'], subdir="figures"):
     
     Args:
         fig: Matplotlib figure object
-        filename: Name without extension (e.g., "unemployment_trends")
+        filename: Name without extension (e.g., "unemployment_trends")  
         formats: List of formats ['png', 'pdf', 'svg']
         subdir: Subdirectory in output/
     
@@ -95,6 +95,68 @@ def save_figure(fig, filename, formats=['png'], subdir="figures"):
     
     print(f"🖼️  Figure saved: {', '.join([str(p) for p in saved_paths])}")
     return saved_paths
+
+def save_plotly_figure(fig, filename, formats=['html'], subdir="figures", for_blog=False):
+    """
+    Save Plotly figure in various formats, optimized for web/blog use
+    
+    Args:
+        fig: Plotly figure object
+        filename: Name without extension
+        formats: List of formats ['html', 'json', 'png', 'pdf', 'svg']
+        subdir: Subdirectory in output/
+        for_blog: If True, optimizes for Jekyll blog embedding
+    
+    Returns:
+        Dictionary with format: filepath pairs
+    """
+    if subdir == "figures":
+        save_dir = FIGURES_DIR
+    else:
+        save_dir = OUTPUT_DIR / subdir
+        save_dir.mkdir(exist_ok=True)
+    
+    # Also save to docs/assets/charts for blog use
+    if for_blog:
+        blog_dir = DATA_DIR.parent / "docs" / "assets" / "charts"
+        blog_dir.mkdir(parents=True, exist_ok=True)
+    
+    saved_files = {}
+    
+    for fmt in formats:
+        file_path = save_dir / f"{filename}.{fmt}"
+        
+        if fmt == 'html':
+            # Save interactive HTML
+            fig.write_html(
+                file_path,
+                include_plotlyjs='cdn',  # Use CDN for smaller files
+                div_id=f"{filename}-chart"
+            )
+            # Also save to blog assets if requested
+            if for_blog:
+                blog_path = blog_dir / f"{filename}.html"
+                fig.write_html(blog_path, include_plotlyjs='cdn', div_id=f"{filename}-chart")
+                print(f"📝 Blog version saved: {blog_path}")
+                
+        elif fmt == 'json':
+            # Save as JSON for custom embedding
+            with open(file_path, 'w') as f:
+                f.write(fig.to_json())
+                
+        elif fmt in ['png', 'pdf', 'svg']:
+            # Static formats
+            fig.write_image(file_path, width=1200, height=700)
+            
+        saved_files[fmt] = file_path
+    
+    print(f"📊 Plotly figure saved: {', '.join([f'{fmt}: {path}' for fmt, path in saved_files.items()])}")
+    
+    if for_blog and 'html' in formats:
+        print(f"✨ To embed in Jekyll post, use:")
+        print(f'<iframe src="{{{{ site.baseurl }}}}/assets/charts/{filename}.html" width="100%" height="700" frameborder="0"></iframe>')
+    
+    return saved_files
 
 def load_data(filename, subdir="processed_data"):
     """
@@ -125,7 +187,7 @@ def load_data(filename, subdir="processed_data"):
 print("✅ Notebook setup complete!")
 print("✅ Available APIs: bls")
 print("✅ Available libraries: pd, np, plt, sns, datetime")
-print("✅ Helper functions: save_data(), save_figure(), load_data()")
+print("✅ Helper functions: save_data(), save_figure(), save_plotly_figure(), load_data()")
 print(f"📁 Data directory: {DATA_DIR}")
 print(f"📁 Output directory: {OUTPUT_DIR}")
 print("📊 Ready for analysis!")
