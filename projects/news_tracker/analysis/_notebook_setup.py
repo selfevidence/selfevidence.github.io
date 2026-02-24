@@ -25,14 +25,14 @@ for d in [OUTPUT_DIR, PROCESSED_DATA_DIR, RAW_DATA_DIR, FIGURES_DIR, DOCS_CHARTS
     d.mkdir(parents=True, exist_ok=True)
 
 # APIs
-from apis.wikipedia_api import WikipediaCurrentEventsAPI
+from apis.wikipedia_api import WikipediaCurrentEventsAPI, WikipediaPageviewsAPI
 
 # Standard libraries
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -43,6 +43,7 @@ sns.set_palette("husl")
 
 # Initialize APIs
 wikipedia = WikipediaCurrentEventsAPI()
+wiki_pageviews = WikipediaPageviewsAPI()
 
 
 # ------------------------------------------------------------------
@@ -126,7 +127,7 @@ def save_plotly_figure(fig, filename, formats=["html"], for_blog=False):
 
 
 print("✅ Notebook setup complete!")
-print("✅ Available APIs: wikipedia")
+print("✅ Available APIs: wikipedia, wiki_pageviews")
 print("✅ Available libraries: pd, np, plt, sns, px, go, datetime")
 print("✅ Helper functions: save_data(), load_data(), save_plotly_figure()")
 print(f"📁 Project directory: {PROJECT_DIR}")

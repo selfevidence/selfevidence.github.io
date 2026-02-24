@@ -1,15 +1,17 @@
 """
-Wikipedia Current Events Portal API
+Wikipedia APIs for the news_tracker project.
 
-Fetches and parses the curated monthly event lists from:
-https://en.wikipedia.org/wiki/Portal:Current_events
+Classes:
+  WikipediaCurrentEventsAPI  — curated monthly event lists from the Current Events Portal
+  WikipediaPageviewsAPI      — daily top 100 most-viewed articles (Wikimedia REST API)
 """
 import re
 import time
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, date, timedelta
+from pathlib import Path
 from typing import Optional
 
 
@@ -87,12 +89,19 @@ class WikipediaCurrentEventsAPI:
     def _parse_html(self, html: str, year: int, month: int) -> pd.DataFrame:
         """Parse rendered HTML into a structured DataFrame.
 
-        Each day is a div.current-events containing:
-          div.current-events-heading  → date (ISO string in span.bday)
-          div.current-events-content  → alternating p / ul blocks
+        Supports two page formats:
 
-        Each p that contains a <b> child is a category heading.
-        p elements without <b> are stray source citations — ignored.
+        Current format (approx. 2020+):
+          div.current-events
+            div.current-events-heading  → date in span.bday
+            div.current-events-content  → alternating <p> / <ul> blocks
+              <p><b>Category</b></p>    → category heading
+
+        Older format (pre-2020, e.g. 2016):
+          div.current-events-main.vevent
+            div.current-events-heading  → date in span.bday
+            div.current-events-content  → div.current-events-content-heading + <ul>
+              div.current-events-content-heading → category heading
 
         Within each ul, events are nested by sub-topic:
           ul (category)
@@ -105,7 +114,12 @@ class WikipediaCurrentEventsAPI:
         soup = BeautifulSoup(html, "html.parser")
         rows = []
 
-        for day_div in soup.find_all("div", class_="current-events"):
+        # Support both the current and older page formats
+        day_divs = soup.find_all("div", class_="current-events")
+        if not day_divs:
+            day_divs = soup.find_all("div", class_="current-events-main")
+
+        for day_div in day_divs:
             # ISO date from structured span — no string parsing needed
             date_span = day_div.find("span", class_="bday")
             if not date_span:
@@ -124,8 +138,13 @@ class WikipediaCurrentEventsAPI:
                 if not hasattr(element, "name") or not element.name:
                     continue
 
-                # Category heading — must have a <b> child to distinguish from
-                # stray source-citation <p> elements like <p>(The Hindu)</p>
+                # Category heading — two formats:
+                #   Current: <p><b>Category name</b></p>
+                #   Older:   <div class="current-events-content-heading">Category name</div>
+                if element.name == "div" and "current-events-content-heading" in element.get("class", []):
+                    current_category = element.get_text(strip=True)
+                    continue
+
                 if element.name == "p":
                     if element.find("b"):
                         current_category = element.get_text(strip=True)
@@ -188,6 +207,10 @@ class WikipediaCurrentEventsAPI:
         """
         html = self._fetch_html(year, month)
         df = self._parse_html(html, year, month)
+        if df.empty or "date" not in df.columns:
+            print(f"  Warning: no events parsed for {self.MONTH_NAMES[month - 1]} {year} "
+                  f"(page structure may differ from current format)")
+            return pd.DataFrame()
         df["date"] = pd.to_datetime(df["date"])
         print(f"  Fetched {len(df)} events for {self.MONTH_NAMES[month - 1]} {year}")
         return df
@@ -232,4 +255,128 @@ class WikipediaCurrentEventsAPI:
 
         df = pd.concat(dfs, ignore_index=True)
         df = df.sort_values(["date", "category"]).reset_index(drop=True)
+        return df
+
+
+class WikipediaPageviewsAPI:
+    """Fetches daily top 100 most-viewed Wikipedia articles.
+
+    Uses the Wikimedia REST API — no authentication required.
+    Data is available from 2015-07-01 onwards.
+
+    Usage:
+        wiki_pageviews = WikipediaPageviewsAPI()
+
+        # Fetch a single day:
+        df = wiki_pageviews.get_day(date(2024, 1, 15))
+
+        # Backfill a range, saving incrementally (safe to interrupt and resume):
+        df = wiki_pageviews.backfill(
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 12, 31),
+            save_path=RAW_DATA_DIR / '01_wikipedia_pageviews.csv',
+        )
+    """
+
+    BASE_URL = (
+        "https://wikimedia.org/api/rest_v1/metrics/pageviews/top"
+        "/en.wikipedia/all-access/{year}/{month:02d}/{day:02d}"
+    )
+    USER_AGENT = "selfevidence.github.io/1.0 (data research project; contact via GitHub)"
+    TOP_N = 100
+
+    def __init__(self):
+        self.session = requests.Session()
+        self.session.headers.update({"User-Agent": self.USER_AGENT})
+
+    def get_day(self, d: date) -> tuple[pd.DataFrame, bool]:
+        """Fetch top 100 articles for a single day.
+
+        Args:
+            d: The date to fetch.
+
+        Returns:
+            (df, is_missing) — df is empty on failure;
+            is_missing=True means a 404 (no data for that date, not an error).
+        """
+        url = self.BASE_URL.format(year=d.year, month=d.month, day=d.day)
+        try:
+            resp = self.session.get(url, timeout=30)
+            if resp.status_code == 404:
+                return pd.DataFrame(), True
+            resp.raise_for_status()
+        except Exception as e:
+            print(f"  Warning: failed to fetch {d}: {e}")
+            return pd.DataFrame(), False
+
+        articles = resp.json()["items"][0]["articles"][: self.TOP_N]
+        df = pd.DataFrame(articles)[["rank", "article", "views"]]
+        df.insert(0, "date", pd.Timestamp(d))
+        return df, False
+
+    def backfill(
+        self,
+        start_date: date,
+        end_date: date,
+        save_path: Path,
+        delay: float = 0.5,
+    ) -> pd.DataFrame:
+        """Fetch a date range, skipping dates already in save_path.
+
+        Saves after each day so progress is preserved if interrupted.
+        Re-running picks up where it left off.
+
+        Args:
+            start_date: First date to fetch (inclusive).
+            end_date:   Last date to fetch (inclusive).
+            save_path:  CSV path to append results to.
+            delay:      Seconds between requests.
+
+        Returns:
+            Full DataFrame loaded from save_path after fetching.
+        """
+        save_path = Path(save_path)
+
+        # Load already-fetched dates to skip
+        fetched_dates: set = set()
+        if save_path.exists():
+            existing = pd.read_csv(save_path, usecols=["date"])
+            fetched_dates = set(pd.to_datetime(existing["date"]).dt.date)
+
+        all_dates = [
+            start_date + timedelta(days=i)
+            for i in range((end_date - start_date).days + 1)
+        ]
+        to_fetch = [d for d in all_dates if d not in fetched_dates]
+
+        if not to_fetch:
+            print(f"  Already up to date — {len(all_dates)} days in {save_path.name}")
+        else:
+            print(f"  Fetching {len(to_fetch)} days ({to_fetch[0]} → {to_fetch[-1]}) ...")
+            write_header = not save_path.exists()
+            missing_count = 0
+            for i, d in enumerate(to_fetch, 1):
+                df_day, is_missing = self.get_day(d)
+                if is_missing:
+                    missing_count += 1
+                elif not df_day.empty:
+                    df_day.to_csv(
+                        save_path,
+                        mode="a",
+                        header=write_header,
+                        index=False,
+                    )
+                    write_header = False
+                if i % 100 == 0:
+                    print(f"    {i}/{len(to_fetch)} days fetched ...")
+                time.sleep(delay)
+            summary = f"  Done. Saved to {save_path}"
+            if missing_count:
+                summary += f" ({missing_count} days had no data in Wikimedia's API)"
+            print(summary)
+
+        df = pd.read_csv(save_path)
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.sort_values(["date", "rank"]).reset_index(drop=True)
+        print(f"  Loaded {len(df):,} rows — {df['date'].dt.date.nunique()} days")
         return df
